@@ -22,19 +22,32 @@ function First-Option
 function Second-Option
 {
 
-    Get-WmiObject -Class win32_logicaldisk | ft @{n='Nombre';e={$_.Name}}, @{n='Espacio Libre (bytes)';e={$_.FreeSpace }}, @{n='Tamaño (bytes)';e={$_.Size }}
+    Get-WmiObject -Class win32_logicaldisk | ft @{n='Name';e={$_.Name}}, @{n='Free Space (bytes)';e={$_.FreeSpace }}, @{n='Size (bytes)';e={$_.Size }}
 }
 
 function Third-Option
 {
   $path = Read-Host "Please,insert the path of the disk or filesystem"
   
-  Write-Host $path
+  Get-ChildItem -Path $path | sort -Descending Length | select -First 1| ft @{n='Name';e={$_.Name}},  @{n='Path';e={$_.FullName}}, @{n='Size (bytes)';e={$_.Length}}
 }
+
+function Fourth-Option
+{
+  Get-ChildItem -Path "C:/" –Hidden
+  #Preguntar sobre archivos swap page and hiber file, preguntar sobre que memoria se busca el espacio libre
+}
+
+function Fifth-Option
+{
+  Get-NetTCPConnection -State Established | Measure-Object -Line | ft @{n='Established Connections';e={$_.Lines}} 
+}
+
 
 do
  {
      Show-Menu
+
      $selection = Read-Host "Please make a selection"
      switch ($selection)
      {
@@ -52,11 +65,11 @@ do
              } 
 
          '4' {
-                'You chose option #4'
+                Fourth-Option
              } 
 
          '5' {
-                'You chose option #5'
+                Fifth-Option
              }
      }
      pause
