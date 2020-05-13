@@ -1,17 +1,28 @@
 ﻿<#
 .SYNOPSIS
+
 DataCenter-ManagementTool provides important information from your data center, so you can easily manage it
+
 .DESCRIPTION
+
 DataCenter-ManagementTool provides the following instructions:
+
 1. Top 5 process consuming CPU: Shows all information about the top five processes that use CPU, using the cmdlet get-process
+
 2. Show filesystems or disk connected: Uses Get-WmiObject to retrieve the instances of Win32_LogicalDisk from the computer. Displays name, free space and size
+
 3. Biggest file on disk or filesystem: According with the path given, using Get-ChildItem it will do a recursive search to find the biggest file
-4. Free memory space and swap space in use: Using systeminfo the state of the virtual and physical memories are displayed
+
+4. Free memory space and swap space in use: Using Get-WmiObject and the Classes -Win32_OperatingSystem & -Win32_PageFileUsage, the states of the Physical memory and the Swap are displayed.
+
 5. Number of established connections: Using Get-NetTCPConnection it counts the number of connections with status "ESTABLISHED"
+
 .EXAMPLE
+
 .\DataCenter-ManagementTool.ps1
 
 The Management option menu will display:
+
 ================ Management Options ================
 
 1: Top 5 process using CPU.
@@ -60,37 +71,40 @@ function Second-Option
 
 function Third-Option
 {
+   
   $path = Read-Host "Please,insert the path of the disk or filesystem"
-  
+
+  $ErrorActionPreference= 'silentlycontinue'
+
+   Write-Host
+   Write-Host "Calculating..."
+   Write-Host
+
   Get-ChildItem -Path $path -Recurse | sort -Descending Length | select -First 1| ft @{n='Name';e={$_.Name}},  @{n='Path';e={$_.FullName}}, @{n='Size (bytes)';e={$_.Length}} -wrap -autosize
+
 }
 
 function Fourth-Option
 {
-    Write-Host "Calculating Results..."
-    Write-Host
-    $totalPhysicalMemory = systeminfo | select-string "Cantidad total de memoria f¡sica:"
-    $totalPhysicalMemoryNumber = [double][regex]::Matches($totalPhysicalMemory, '[\d.]+').Value -replace "\,",""
-    $totalPhysicalMemoryBytes = [double] $totalPhysicalMemoryNumber * 1000000
+                Write-Host
 
+                $memoryObject = Get-WmiObject -Class Win32_OperatingSystem | Select-Object *
 
-    $physicalMemoryAvailable = systeminfo | select-string "Memoria f¡sica disponible:"
-    $physicalMemoryAvailableNumber = [double][regex]::Matches($physicalMemoryAvailable, '[\d.]+').Value -replace "\,",""
-    $physicalMemoryAvailableBytes = [double] $physicalMemoryAvailableNumber * 1000000
+                $totalPhysicalMemory = ($memoryObject.TotalVisibleMemorySize*1KB)
+                $freePhysicalMemory = ($memoryObject.FreePhysicalMemory*1KB)
 
-    $virtualMemoryInUse = systeminfo | select-string "Memoria virtual: en uso:"
-    $virtualMemoryInUseNumber = [double][regex]::Matches($virtualMemoryInUse, '[\d.]+').Value -replace "\,",""
-    $virtualMemoryInUseBytes = [double] $virtualMemoryInUseNumber * 1000000
+                $swapObject = Get-WmiObject -Class Win32_PageFileUsage | Select-Object *
 
-
-    $totalVirtualMemory = systeminfo | select-string "Memoria virtual: tama¤o m ximo:"
-    $totalVirtualMemoryNumber = [double][regex]::Matches($totalVirtualMemory, '[\d.]+').Value -replace "\,",""
-    $totalVirtualMemoryBytes = [double] $totalVirtualMemoryNumber * 1000000
-
-    Write-Host "Swap in use (bytes):            " $virtualMemoryInUseBytes
-    Write-Host "Swap in use (%):                " (($virtualMemoryInUseBytes / $totalVirtualMemoryBytes) * 100) "%"
-    Write-Host "Physical Memory in use (bytes): " $physicalMemoryAvailableBytes
-    Write-Host "Physical Memory in use (%):     " (($physicalMemoryAvailableBytes / $totalPhysicalMemoryBytes) * 100) "%"
+                $swapInUse = ($swapObject.CurrentUsage*1MB)
+                $swapTotalSpace = ($swapObject.AllocatedBaseSize*1MB)
+                   
+                Write-Host
+                Write-Host "Swap in use (bytes):            " $swapInUse
+                Write-Host "Swap in use (%):                " (($swapInUse / $swapTotalSpace) * 100) "%"
+                Write-Host "Free Physical Memory (bytes):   " $freePhysicalMemory
+                Write-Host "Free Physical Memory (%):       " (($freePhysicalMemory / $totalPhysicalMemory) * 100) "%"
+                Write-Host
+    
 }
 
 function Fifth-Option
